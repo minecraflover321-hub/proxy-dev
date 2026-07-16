@@ -1,0 +1,6 @@
+Flask
+Flask-CORS
+requests
+Pillow
+python-telegram-bot
+python-dotenv
